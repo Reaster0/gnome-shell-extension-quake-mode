@@ -27,6 +27,11 @@
 		<key name="app-3" type="s"><default>''</default></key>
 		<key name="app-4" type="s"><default>''</default></key>
 		<key name="app-5" type="s"><default>''</default></key>
+		<key name="monitor-1" type="i"><range min="-1" max="20"/><default>-1</default></key>
+		<key name="monitor-2" type="i"><range min="-1" max="20"/><default>-1</default></key>
+		<key name="monitor-3" type="i"><range min="-1" max="20"/><default>-1</default></key>
+		<key name="monitor-4" type="i"><range min="-1" max="20"/><default>-1</default></key>
+		<key name="monitor-5" type="i"><range min="-1" max="20"/><default>-1</default></key>
 	</schema>
 
 

@@ -16,12 +16,13 @@ export var state = {
 export var QuakeModeApp = class {
   /**
    * @param {string} app_id
+   * @param {number} slot
    */
-  constructor(app_id) {
+  constructor(app_id, slot) {
     this.isTransition = false;
     this.state = state.INITIAL;
-    // monitor the window was on when last hidden; -1 = use the setting
-    this.lastMonitor = -1;
+    // per-slot key holding the monitor the window was last hidden on; -1 = use the global setting
+    this.monitorKey = `monitor-${slot}`;
 
     /** @type {import('@girs/meta-13').Meta.Window?} */
     this.win = null;
@@ -42,16 +43,14 @@ export var QuakeModeApp = class {
         Extension.lookupByURL(import.meta.url)
       );
     const settings = (this.settings = extensionObject.getSettings());
+    this.appsSettings = settings.get_child("apps");
 
     settings.connect("changed::quake-mode-width", place);
     settings.connect("changed::quake-mode-height", place);
     settings.connect("changed::quake-mode-gap", place);
     settings.connect("changed::quake-mode-halign", place);
     settings.connect("changed::quake-mode-valign", place);
-    settings.connect("changed::quake-mode-monitor", () => {
-      this.lastMonitor = -1;
-      place();
-    });
+    settings.connect("changed::quake-mode-monitor", place);
     settings.connect("changed::quake-mode-always-on-top", setupAlwaysOnTop);
 
     this.state = state.READY;
@@ -62,6 +61,11 @@ export var QuakeModeApp = class {
 
     if (this.settings) {
       this.settings.run_dispose();
+    }
+
+    if (this.appsSettings) {
+      this.appsSettings.run_dispose();
+      this.appsSettings = null;
     }
 
     this.win = null;
@@ -127,10 +131,9 @@ export var QuakeModeApp = class {
   get monitor() {
     const { win, settings } = this;
 
+    const slotMonitor = this.appsSettings?.get_int(this.monitorKey) ?? -1;
     const monitor =
-      this.lastMonitor >= 0
-        ? this.lastMonitor
-        : settings.get_int("quake-mode-monitor");
+      slotMonitor >= 0 ? slotMonitor : settings.get_int("quake-mode-monitor");
 
     if (!win) return monitor;
 
@@ -283,7 +286,8 @@ export var QuakeModeApp = class {
           child.meta_window.minimize();
         }
         child.translation_y = 0;
-        if (lastMonitor >= 0) this.lastMonitor = lastMonitor;
+        if (lastMonitor >= 0 && this.appsSettings)
+          this.appsSettings.set_int(this.monitorKey, lastMonitor);
       },
     });
   }

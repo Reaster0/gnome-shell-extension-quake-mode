@@ -58,6 +58,12 @@ export default class QuakeModeExtension extends Extension {
       this._settings.reset("quake-mode-hotkey");
     }
 
+    // picking a monitor in tray/prefs overrides every slot's remembered one
+    this._settings.connect("changed::quake-mode-monitor", (settings) => {
+      const apps = settings.get_child("apps");
+      for (let i = 1; i <= APPS_COUNT; i++) apps.set_int(`monitor-${i}`, -1);
+    });
+
     for (let i = 1; i <= APPS_COUNT; i++) {
       Main.wm.addKeybinding(
         `quake-mode-accelerator-${i}`,
@@ -111,7 +117,7 @@ export default class QuakeModeExtension extends Extension {
     try {
       let app = apps.get(i);
       if (!app || app.state === state.DEAD) {
-        app = new QuakeModeApp(this._app_id(i));
+        app = new QuakeModeApp(this._app_id(i), i);
         apps.set(i, app);
       }
 
