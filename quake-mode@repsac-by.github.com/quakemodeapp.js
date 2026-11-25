@@ -166,7 +166,7 @@ export var QuakeModeApp = class {
       const timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 5000, () => {
         sig.off();
         reject(new Error(`launch '${app.id}' timeout`));
-        return true;
+        return false;
       });
 
       const sig = once(app, "windows-changed", () => {
@@ -224,6 +224,9 @@ export var QuakeModeApp = class {
 
     this.isTransition = true;
 
+    // place before easing so a monitor move cannot interrupt the transition
+    this.place();
+
     parent.set_child_above_sibling(child, null);
     (child.translation_y = child.height * (valign === "top" ? -1 : 2)),
       //@ts-expect-error Missing type. TODO: contribute to @girs
@@ -235,14 +238,14 @@ export var QuakeModeApp = class {
       translation_y: 0,
       duration: this.ainmation_time,
       mode: Clutter.AnimationMode.EASE_OUT_QUART,
-      onComplete: () => {
+      // onStopped fires even when interrupted; onComplete left isTransition stuck
+      onStopped: (isFinished) => {
+        child.translation_y = 0;
         this.isTransition = false;
-        if (focusout)
+        if (focusout && isFinished)
           once(global.display, "notify::focus-window", () => this.hide());
       },
     });
-
-    this.place();
   }
 
   hide() {
@@ -261,12 +264,14 @@ export var QuakeModeApp = class {
       translation_y: child.height * (valign === "top" ? -1 : 2),
       duration: this.ainmation_time,
       mode: Clutter.AnimationMode.EASE_IN_QUART,
-      onComplete: () => {
-        //@ts-expect-error
-        Main.wm.skipNextEffect(child);
-        child.meta_window.minimize();
-        child.translation_y = 0;
+      onStopped: () => {
         this.isTransition = false;
+        if (child.meta_window) {
+          //@ts-expect-error
+          Main.wm.skipNextEffect(child);
+          child.meta_window.minimize();
+        }
+        child.translation_y = 0;
       },
     });
   }
