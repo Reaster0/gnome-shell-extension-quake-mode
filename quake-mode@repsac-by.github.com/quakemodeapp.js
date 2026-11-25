@@ -20,6 +20,8 @@ export var QuakeModeApp = class {
   constructor(app_id) {
     this.isTransition = false;
     this.state = state.INITIAL;
+    // monitor the window was on when last hidden; -1 = use the setting
+    this.lastMonitor = -1;
 
     /** @type {import('@girs/meta-13').Meta.Window?} */
     this.win = null;
@@ -46,7 +48,10 @@ export var QuakeModeApp = class {
     settings.connect("changed::quake-mode-gap", place);
     settings.connect("changed::quake-mode-halign", place);
     settings.connect("changed::quake-mode-valign", place);
-    settings.connect("changed::quake-mode-monitor", place);
+    settings.connect("changed::quake-mode-monitor", () => {
+      this.lastMonitor = -1;
+      place();
+    });
     settings.connect("changed::quake-mode-always-on-top", setupAlwaysOnTop);
 
     this.state = state.READY;
@@ -122,7 +127,10 @@ export var QuakeModeApp = class {
   get monitor() {
     const { win, settings } = this;
 
-    const monitor = settings.get_int("quake-mode-monitor");
+    const monitor =
+      this.lastMonitor >= 0
+        ? this.lastMonitor
+        : settings.get_int("quake-mode-monitor");
 
     if (!win) return monitor;
 
@@ -257,6 +265,9 @@ export var QuakeModeApp = class {
 
     if (this.isTransition) return;
 
+    // remember the monitor the user left the window on
+    const lastMonitor = child.meta_window?.get_monitor() ?? -1;
+
     this.isTransition = true;
 
     //@ts-expect-error
@@ -272,6 +283,7 @@ export var QuakeModeApp = class {
           child.meta_window.minimize();
         }
         child.translation_y = 0;
+        if (lastMonitor >= 0) this.lastMonitor = lastMonitor;
       },
     });
   }
